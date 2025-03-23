@@ -3,13 +3,13 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database.db import get_db
-from src.routes import contacts, auth
+from src.routes import contacts, auth, users
 
 app = FastAPI()
 
 app.include_router(contacts.router, prefix="/api")
 app.include_router(auth.router, prefix="/api")
-
+app.include_router(users.router, prefix="/api")
 
 @app.get("/")
 def read_root(request: Request):

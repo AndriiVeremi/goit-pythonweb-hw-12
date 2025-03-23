@@ -19,7 +19,8 @@ class BaseRepository:
         return list(contacts.scalars().all())
 
     async def get_by_id(self, _id: int) -> ModelType | None:
-        stmt = select(self.model).where(id=_id)
+        # stmt = select(self.model).where(id=_id)
+        stmt = select(self.model).filter_by(id=_id)
         contact = await self.db.execute(stmt)
         return contact.scalar_one_or_none()
 
