@@ -11,7 +11,7 @@ ModelType = TypeVar("ModelType", bound=Base)
 class BaseRepository:
     def __init__(self, session: AsyncSession, model: Type[ModelType]):
         self.db = session
-        self.model = model
+        self.model: Type[ModelType] = model
 
     async def get_all(self) -> list[ModelType]:
         stmt = select(self.model)

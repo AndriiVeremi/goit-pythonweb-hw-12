@@ -10,6 +10,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
+from libgravatar import Gravatar
 
 from src.conf.config import settings
 from src.entity.models import User
@@ -48,6 +49,12 @@ class AuthService:
                 detail="Incorrect username or password",
             )
 
+        if not user.confirmed:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Email address not confirmed",
+            )
+
         if not self._verify_password(password, user.hash_password):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -61,8 +68,18 @@ class AuthService:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT, detail="User already exists"
             )
+        if await self.user_repository.get_user_by_email(str(user_data.email)):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT, detail="Email already exists"
+            )
+        avatar = None
+        try:
+            g = Gravatar(user_data.email)
+            avatar = g.get_image()
+        except Exception as e:
+            print(e)
         hashed_password = self._hash_password(user_data.password)
-        user = await self.user_repository.create_user(user_data, hashed_password)
+        user = await self.user_repository.create_user(user_data, hashed_password, avatar)
         return user
 
     def create_access_token(self, username: str) -> str:
@@ -136,6 +153,3 @@ class AuthService:
         exp = payload.get("exp")
         if exp:
             await redis_client.setex(f"bl:{token}", int(exp - datetime.now(timezone.utc).timestamp()), "1")
-
-
-
