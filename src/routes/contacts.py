@@ -26,7 +26,6 @@ async def get_contacts(
         user: User = Depends(get_current_user),
 ):
     cont_service = ContactService(db)
-    # return await cont_service.get_contacts(limit, offset, user)
     contacts = await cont_service.get_contacts(limit, offset, user)
     logger.info(f"Fetched {len(contacts)} contacts")
     return contacts

@@ -6,7 +6,6 @@ import bcrypt
 import hashlib
 import redis.asyncio as redis
 from fastapi import Depends, HTTPException, status
-# from passlib.context import CryptContext
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
