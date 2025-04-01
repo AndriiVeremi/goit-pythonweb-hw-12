@@ -1,6 +1,6 @@
 import logging
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.entity.models import User
@@ -24,9 +24,14 @@ class UserRepository(BaseRepository):
         user = await self.db.execute(stmt)
         return user.scalar_one_or_none()
 
-    async def create_user(self, user_data: UserCreate, hashed_password: str, avatar: str) -> User:
-        user = User(**user_data.model_dump(exclude_unset=True, exclude={"password"}), hash_password=hashed_password,
-                    avatar=avatar)
+    async def create_user(
+        self, user_data: UserCreate, hashed_password: str, avatar: str
+    ) -> User:
+        user = User(
+            **user_data.model_dump(exclude_unset=True, exclude={"password"}),
+            hash_password=hashed_password,
+            avatar=avatar,
+        )
         return await self.create(user)
 
     async def confirmed_email(self, email: str) -> None:
@@ -40,3 +45,8 @@ class UserRepository(BaseRepository):
         await self.db.commit()
         await self.db.refresh(user)
         return user
+
+    async def update_password(self, user_id: int, hashed_password: str) -> None:
+        stmt = text("UPDATE users SET hash_password = :password WHERE id = :user_id")
+        await self.db.execute(stmt, {"password": hashed_password, "user_id": user_id})
+        await self.db.commit()

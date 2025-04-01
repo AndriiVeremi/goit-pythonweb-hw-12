@@ -2,7 +2,16 @@ from datetime import datetime, date
 from enum import Enum
 from typing import Any
 
-from sqlalchemy import String, Date, ForeignKey, DateTime, func, Text, Boolean, Enum as SqlEnum
+from sqlalchemy import (
+    String,
+    Date,
+    ForeignKey,
+    DateTime,
+    func,
+    Text,
+    Boolean,
+    Enum as SqlEnum,
+)
 from sqlalchemy.orm import DeclarativeBase, relationship
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -24,10 +33,12 @@ class Contact(Base):
 
     user: Mapped["User"] = relationship("User", backref="contacts", lazy="joined")
 
+
 class UserRole(str, Enum):
     USER = "USER"
     MODERATOR = "MODERATOR"
     ADMIN = "ADMIN"
+
 
 class User(Base):
     __tablename__ = "users"
@@ -42,6 +53,9 @@ class User(Base):
     confirmed: Mapped[bool] = mapped_column(Boolean, default=False)
     refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
         "RefreshToken", back_populates="user"
+    )
+    password_reset_tokens: Mapped[list["PasswordResetToken"]] = relationship(
+        "PasswordResetToken", back_populates="user"
     )
 
 
@@ -61,3 +75,16 @@ class RefreshToken(Base):
     user_agent: Mapped[str] = mapped_column(Text, nullable=True)
 
     user: Mapped["User"] = relationship("User", back_populates="refresh_tokens")
+
+
+class PasswordResetToken(Base):
+    __tablename__ = "password_reset_tokens"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    token: Mapped[str] = mapped_column(unique=True)
+    expires_at: Mapped[datetime] = mapped_column()
+    used: Mapped[bool] = mapped_column(default=False)
+    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
+
+    user: Mapped["User"] = relationship("User", back_populates="password_reset_tokens")
