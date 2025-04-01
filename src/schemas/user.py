@@ -18,16 +18,3 @@ class UserResponse(UserBase):
     role: UserRole
 
     model_config = ConfigDict(from_attributes=True)
-
-
-class PasswordResetRequest(BaseModel):
-    email: EmailStr
-
-
-class PasswordResetConfirm(BaseModel):
-    token: str
-    new_password: str
-
-
-class PasswordResetResponse(BaseModel):
-    message: str
