@@ -17,4 +17,6 @@ class UserResponse(UserBase):
     avatar: str | None
     role: UserRole
 
+
+
     model_config = ConfigDict(from_attributes=True)
