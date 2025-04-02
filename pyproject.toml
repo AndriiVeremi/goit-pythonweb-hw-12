@@ -28,9 +28,17 @@ dependencies = [
     "pytest (>=8.3.5,<9.0.0)",
     "pytest-asyncio (>=0.26.0,<0.27.0)",
     "aiosqlite (>=0.21.0,<0.22.0)",
-    "httpx (>=0.28.1,<0.29.0)"
+    "httpx (>=0.28.1,<0.29.0)",
+    "pytest-cov (>=6.1.0,<7.0.0)"
 ]
 
+[tool.poetry]
+name = "goit-pythonweb-hw-12"
+version = "0.1.0"
+description = ""
+authors = ["Andrii Veremii <114438382+AndriiVeremi@users.noreply.github.com>"]
+readme = "README.md"
+packages = [{include = "src"}]
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
@@ -40,3 +48,13 @@ build-backend = "poetry.core.masonry.api"
 pythonpath = "."
 asyncio_mode = "strict"
 testpaths = ["tests"]
+
+[tool.poetry.group.dev.dependencies]
+pytest-cov = "^6.1.0"
+
+[tool.poetry.scripts]
+test = "pytest:main"
+test-cov = "pytest:main --cov=src"
+test-v = "pytest:main -v"
+test-cov-v = "pytest:main --cov=src -v"
+

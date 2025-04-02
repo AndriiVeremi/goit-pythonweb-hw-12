@@ -47,6 +47,7 @@ class UserRepository(BaseRepository):
         return user
 
     async def update_password(self, user_id: int, hashed_password: str) -> None:
-        stmt = text("UPDATE users SET hash_password = :password WHERE id = :user_id")
-        await self.db.execute(stmt, {"password": hashed_password, "user_id": user_id})
-        await self.db.commit()
+        user = await self.db.get(self.model, user_id)
+        if user:
+            user.hash_password = hashed_password
+            await self.db.commit()

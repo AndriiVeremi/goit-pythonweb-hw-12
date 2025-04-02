@@ -1,6 +1,6 @@
 from datetime import datetime
 import secrets
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.repositories.base import BaseRepository
@@ -35,3 +35,8 @@ class PasswordResetRepository(BaseRepository):
         if reset_token:
             reset_token.used = True
             await self.db.commit()
+
+    async def delete_expired_tokens(self) -> None:
+        stmt = delete(self.model).where(self.model.expires_at < datetime.utcnow())
+        await self.db.execute(stmt)
+        await self.db.commit()
