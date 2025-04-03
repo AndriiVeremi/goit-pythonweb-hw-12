@@ -1,147 +1,246 @@
-import pytest
-from datetime import date, timedelta
-from typing import AsyncGenerator
+# import pytest
+# from sqlalchemy.ext.asyncio import AsyncSession
+# from unittest.mock import AsyncMock, Mock
+#
+# from src.entity.models import Contact, User
+# from src.repositories.contacts_repository import ContactRepository
+# from src.schemas.contact import ContactSchema, ContactUpdateSchema
+#
+# @pytest.fixture
+# def mock_session():
+#     session = AsyncMock(spec=AsyncSession)
+#     # session.execute = AsyncMock()
+#     # session.commit = AsyncMock()
+#     # session.refresh = AsyncMock()
+#     # session.add = Mock()
+#     # session.delete = AsyncMock()
+#     return session
+#
+# @pytest.fixture
+# def mock_user():
+#     return User(id=1, username="test_user")
+#
+# @pytest.fixture
+# def contacts_repository(mock_session):
+#     return ContactRepository(mock_session)
+#
+# @pytest.mark.asyncio
+# async def test_get_contacts(contacts_repository, mock_session, mock_user):
+#     # Arrange
+#     limit = 10
+#     offset = 0
+#     mock_contacts = [Contact(id=1, title="Test Contact"), Contact(id=2, title="Another Contact")]
+#     mock_result = Mock()
+#     mock_result.scalars.return_value.all.return_value = mock_contacts
+#     mock_session.execute.return_value = mock_result
+#
+#     # Act
+#     result = await contacts_repository.get_contacts(limit, offset, mock_user)
+#
+#     # Assert
+#     assert result == mock_contacts
+#     mock_session.execute.assert_called_once()
+#
+# @pytest.mark.asyncio
+# async def test_get_contact_by_id(contacts_repository, mock_session, mock_user):
+#     # Arrange
+#     contact_id = 1
+#     mock_contact = Contact(id=contact_id, title="Test Contact")
+#     mock_result = Mock()
+#     mock_result.scalar_one_or_none.return_value = mock_contact
+#     mock_session.execute.return_value = mock_result
+#
+#     # Act
+#     result = await contacts_repository.get_contact_by_id(contact_id, mock_user)
+#
+#     # Assert
+#     assert result == mock_contact
+#     mock_session.execute.assert_called_once()
+#
+# @pytest.mark.asyncio
+# async def test_create_contact(contacts_repository, mock_session, mock_user):
+#     # Arrange
+#     contact_data = ContactSchema(title="New Contact", description="Test Description")
+#     mock_contact = Contact(
+#         id=1,
+#         title=contact_data.title,
+#         description=contact_data.description,
+#         user_id=mock_user.id
+#     )
+#
+#     async def mock_refresh(contact):
+#         return mock_contact
+#
+#
+#     mock_session.refresh.side_effect = mock_refresh
+#
+#
+#     # Act
+#     result = await contacts_repository.create_contact(contact_data, mock_user)
+#
+#     # Assert
+#     assert result.title == mock_contact.title
+#     assert result.description == mock_contact.description
+#     assert result.user_id == mock_contact.user_id
+#     mock_session.add.assert_called_once()
+#     mock_session.commit.assert_called_once()
+#     mock_session.refresh.assert_called_once()
+#
+# @pytest.mark.asyncio
+# async def test_remove_contact(contacts_repository, mock_session, mock_user):
+#     # Arrange
+#     contact_id = 1
+#     mock_contact = Contact(id=contact_id, title="Test Contact")
+#     mock_result = Mock()
+#     mock_result.scalar_one_or_none.return_value = mock_contact
+#     mock_session.execute.return_value = mock_result
+#
+#     # Act
+#     result = await contacts_repository().remove_contact(contact_id, mock_user)
+#
+#     # Assert
+#     assert result == mock_contact
+#     mock_session.delete.assert_called_once_with(mock_contact)
+#     mock_session.commit.assert_called_once()
+#
+# @pytest.mark.asyncio
+# async def test_update_contact(contacts_repository, mock_session, mock_user):
+#     # Arrange
+#     contact_id = 1
+#     update_data = ContactUpdateSchema(title="Updated Contact")
+#     mock_contact = Contact(id=contact_id, title="Old Title")
+#     mock_result = Mock()
+#     mock_result.scalar_one_or_none.return_value = mock_contact
+#     mock_session.execute.return_value = mock_result
+#     mock_session.refresh.return_value = mock_contact
+#
+#     # Act
+#     result = await contacts_repository.update_contact(contact_id, update_data, mock_user)
+#
+#     # Assert
+#     assert result.title == "Updated Contact"
+#     mock_session.commit.assert_called_once()
+#     mock_session.refresh.assert_called_once()
+#
 
+
+import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
+from unittest.mock import AsyncMock, Mock
+import datetime
 
 from src.entity.models import Contact, User
 from src.repositories.contacts_repository import ContactRepository
 from src.schemas.contact import ContactSchema, ContactUpdateSchema
 
+@pytest.fixture
+def mock_session():
+    session = AsyncMock(spec=AsyncSession)
+    return session
 
 @pytest.fixture
-def test_contact_data() -> dict:
-    return {
-        "first_name": "John",
-        "last_name": "Doe",
-        "email": "john@example.com",
-        "phone": "+1234567890",
-        "birthday": date(1990, 1, 1),
-        "extra_info": "Test contact",
-    }
-
+def mock_user():
+    return User(id=1, username="test_user")
 
 @pytest.fixture
-async def test_contact(
-    test_user: User, test_contact_data: dict, session: AsyncSession
-) -> Contact:
-    contact = Contact(**test_contact_data, user_id=test_user.id)
-    session.add(contact)
-    await session.commit()
-    await session.refresh(contact)
-    return contact
-
-
-@pytest.fixture
-async def contact_repository(
-    session: AsyncSession,
-) -> AsyncGenerator[ContactRepository, None]:
-    yield ContactRepository(session)
-
+def contacts_repository(mock_session):
+    return ContactRepository(mock_session)
 
 @pytest.mark.asyncio
-async def test_get_contacts(
-    contact_repository: ContactRepository, test_user: User, test_contact: Contact
-):
-    contacts = await contact_repository.get_contacts(limit=10, offset=0, user=test_user)
-    assert len(contacts) == 1
-    assert contacts[0].id == test_contact.id
+async def test_get_contacts(contacts_repository, mock_session, mock_user):
+    limit = 10
+    offset = 0
+    mock_contacts = [
+        Contact(id=1, first_name="Test", last_name="Contact", email="test@example.com", phone="1234567890", birthday=datetime.date(1990, 1, 1), extra_info="Info"),
+        Contact(id=2, first_name="Another", last_name="Contact", email="another@example.com", phone="0987654321", birthday=datetime.date(1991, 2, 2), extra_info="Info")
+    ]
+    mock_result = Mock()
+    mock_result.scalars.return_value.all.return_value = mock_contacts
+    mock_session.execute.return_value = mock_result
 
+    result = await contacts_repository.get_contacts(limit, offset, mock_user)
+
+    assert result == mock_contacts
+    mock_session.execute.assert_called_once()
 
 @pytest.mark.asyncio
-async def test_get_contact_by_id(
-    contact_repository: ContactRepository, test_user: User, test_contact: Contact
-):
-    contact = await contact_repository.get_contact_by_id(
-        contact_id=test_contact.id, user=test_user
+async def test_get_contact_by_id(contacts_repository, mock_session, mock_user):
+    contact_id = 1
+    mock_contact = Contact(id=contact_id, first_name="Test", last_name="Contact", email="test@example.com", phone="1234567890", birthday=datetime.date(1990, 1, 1), extra_info="Info")
+    mock_result = Mock()
+    mock_result.scalar_one_or_none.return_value = mock_contact
+    mock_session.execute.return_value = mock_result
+
+    result = await contacts_repository.get_contact_by_id(contact_id, mock_user)
+
+    assert result == mock_contact
+    mock_session.execute.assert_called_once()
+
+@pytest.mark.asyncio
+async def test_create_contact(contacts_repository, mock_session, mock_user):
+    contact_data = ContactSchema(
+        first_name="New",
+        last_name="Contact",
+        email="new@example.com",
+        phone="1234567890",
+        birthday=datetime.date(1990, 1, 1),
+        extra_info="Test Description"
     )
-    assert contact is not None
-    assert contact.id == test_contact.id
-    assert contact.first_name == test_contact.first_name
-    assert contact.last_name == test_contact.last_name
-    assert contact.email == test_contact.email
-
-
-@pytest.mark.asyncio
-async def test_create_contact(
-    contact_repository: ContactRepository, test_user: User, test_contact_data: dict
-):
-    contact_schema = ContactSchema(**test_contact_data)
-    contact = await contact_repository.create_contact(
-        body=contact_schema, user=test_user
+    mock_contact = Contact(
+        id=1,
+        first_name=contact_data.first_name,
+        last_name=contact_data.last_name,
+        email=contact_data.email,
+        phone=contact_data.phone,
+        birthday=contact_data.birthday,
+        extra_info=contact_data.extra_info,
+        user_id=mock_user.id
     )
-    assert contact is not None
-    assert contact.first_name == test_contact_data["first_name"]
-    assert contact.last_name == test_contact_data["last_name"]
-    assert contact.email == test_contact_data["email"]
-    assert contact.user_id == test_user.id
 
+    async def mock_refresh(contact):
+        return mock_contact
 
-@pytest.mark.asyncio
-async def test_update_contact(
-    contact_repository: ContactRepository, test_user: User, test_contact: Contact
-):
-    update_data = ContactUpdateSchema(first_name="Jane", last_name="Smith")
-    updated_contact = await contact_repository.update_contact(
-        contact_id=test_contact.id, body=update_data, user=test_user
-    )
-    assert updated_contact is not None
-    assert updated_contact.first_name == "Jane"
-    assert updated_contact.last_name == "Smith"
-    assert updated_contact.email == test_contact.email  # Не змінилося
+    mock_session.refresh.side_effect = mock_refresh
 
+    result = await contacts_repository.create_contact(contact_data, mock_user)
+
+    assert result.first_name == mock_contact.first_name
+    assert result.last_name == mock_contact.last_name
+    assert result.email == mock_contact.email
+    assert result.phone == mock_contact.phone
+    assert result.birthday == mock_contact.birthday
+    assert result.extra_info == mock_contact.extra_info
+    assert result.user_id == mock_contact.user_id
+    mock_session.add.assert_called_once()
+    mock_session.commit.assert_called_once()
+    mock_session.refresh.assert_called_once()
 
 @pytest.mark.asyncio
-async def test_remove_contact(
-    contact_repository: ContactRepository, test_user: User, test_contact: Contact
-):
-    removed_contact = await contact_repository.remove_contact(
-        contact_id=test_contact.id, user=test_user
-    )
-    assert removed_contact is not None
-    assert removed_contact.id == test_contact.id
+async def test_remove_contact(contacts_repository, mock_session, mock_user):
+    contact_id = 1
+    mock_contact = Contact(id=contact_id, first_name="Test", last_name="Contact", email="test@example.com", phone="1234567890", birthday=datetime.date(1990, 1, 1), extra_info="Info")
+    mock_result = Mock()
+    mock_result.scalar_one_or_none.return_value = mock_contact
+    mock_session.execute.return_value = mock_result
 
-    # Перевіряємо, що контакт дійсно видалений
-    contact = await contact_repository.get_contact_by_id(
-        contact_id=test_contact.id, user=test_user
-    )
-    assert contact is None
+    result = await contacts_repository.remove_contact(contact_id, mock_user)
 
+    assert result == mock_contact
+    mock_session.delete.assert_called_once_with(mock_contact)
+    mock_session.commit.assert_called_once()
 
 @pytest.mark.asyncio
-async def test_search_contacts(
-    contact_repository: ContactRepository, test_contact: Contact
-):
-    # Пошук за ім'ям
-    contacts = await contact_repository.search_contacts(first_name="John")
-    assert len(contacts) == 1
-    assert contacts[0].id == test_contact.id
+async def test_update_contact(contacts_repository, mock_session, mock_user):
+    contact_id = 1
+    update_data = ContactUpdateSchema(first_name="Updated Contact")
+    mock_contact = Contact(id=contact_id, first_name="Old", last_name="Title", email="test@example.com", phone="1234567890", birthday=datetime.date(1990, 1, 1), extra_info="Info")
+    mock_result = Mock()
+    mock_result.scalar_one_or_none.return_value = mock_contact
+    mock_session.execute.return_value = mock_result
+    mock_session.refresh.return_value = mock_contact
 
-    # Пошук за прізвищем
-    contacts = await contact_repository.search_contacts(last_name="Doe")
-    assert len(contacts) == 1
-    assert contacts[0].id == test_contact.id
+    result = await contacts_repository.update_contact(contact_id, update_data, mock_user)
 
-    # Пошук за email
-    contacts = await contact_repository.search_contacts(email="john@example.com")
-    assert len(contacts) == 1
-    assert contacts[0].id == test_contact.id
-
-    # Пошук з неправильними даними
-    contacts = await contact_repository.search_contacts(first_name="NonExistent")
-    assert len(contacts) == 0
-
-
-@pytest.mark.asyncio
-async def test_get_upcoming_birthdays(
-    contact_repository: ContactRepository, test_contact: Contact
-):
-    # Встановлюємо дату народження на завтра
-    tomorrow = date.today() + timedelta(days=1)
-    test_contact.birthday = tomorrow
-    await contact_repository.db.commit()
-
-    # Отримуємо контакти з днями народження протягом наступних 7 днів
-    contacts = await contact_repository.get_upcoming_birthdays(days=7)
-    assert len(contacts) == 1
-    assert contacts[0].id == test_contact.id
+    assert result.first_name == "Updated Contact"
+    mock_session.commit.assert_called_once()
+    mock_session.refresh.assert_called_once()

@@ -1,75 +1,78 @@
-import os
-import sys
-import pytest
 import asyncio
-from typing import AsyncGenerator
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
 
-from src.entity.models import Base, User
-from src.conf.config import settings
+import pytest
+import pytest_asyncio
+from fastapi.testclient import TestClient
+from sqlalchemy.pool import StaticPool
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 
-# Додаємо кореневу директорію проекту до PYTHONPATH
-sys.path.insert(0, os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
+from main import app
+from src.entity.models import Base, User, UserRole
+from src.database.db import get_db
+from src.services.auth import AuthService
 
-# Налаштовуємо політику циклу подій для Windows
-if sys.platform == "win32":
-    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+SQLALCHEMY_DATABASE_URL = "sqlite+aiosqlite:///./test.db"
 
-# Створюємо двигун для тестової бази даних
-test_engine = create_async_engine(settings.test_database_url, echo=True, future=True)
-
-# Створюємо фабрику сесій для тестів
-TestingSessionLocal = sessionmaker(
-    test_engine, class_=AsyncSession, expire_on_commit=False
+engine = create_async_engine(
+    SQLALCHEMY_DATABASE_URL,
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
 )
 
+TestingSessionLocal = async_sessionmaker(
+    autocommit=False, autoflush=False, expire_on_commit=False, bind=engine
+)
 
-@pytest.fixture(scope="session")
-def event_loop():
-    """Create an instance of the default event loop for each test case."""
-    policy = asyncio.get_event_loop_policy()
-    loop = policy.new_event_loop()
-    asyncio.set_event_loop(loop)
-    yield loop
-    loop.close()
-
-
-@pytest.fixture(scope="session")
-async def engine():
-    """Create test database and tables."""
-    async with test_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-        await conn.run_sync(Base.metadata.create_all)
-    yield test_engine
-    async with test_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+test_user = {
+    "username": "deadpool",
+    "email": "deadpool@example.com",
+    "password": "12345678",
+}
 
 
-@pytest.fixture(scope="function")
-async def session(engine) -> AsyncGenerator[AsyncSession, None]:
-    """Create a new session for each test."""
-    async with TestingSessionLocal() as session:
-        # Очищаємо базу даних перед кожним тестом
+@pytest.fixture(scope="module", autouse=True)
+def init_models_wrap():
+    async def init_models():
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.drop_all)
             await conn.run_sync(Base.metadata.create_all)
-        yield session
-        await session.rollback()
-        await session.close()
+        async with TestingSessionLocal() as session:
+            auth_service = AuthService(session)
+            hash_password = auth_service._hash_password(test_user["password"])  # noqa
+            current_user = User(
+                username=test_user["username"],
+                email=test_user["email"],
+                hash_password=hash_password,
+                confirmed=True,
+                avatar="https://twitter.com/gravatar",
+                role=UserRole.ADMIN,
+            )
+            session.add(current_user)
+            await session.commit()
+
+    asyncio.run(init_models())
 
 
-@pytest.fixture(scope="function")
-async def test_user(session: AsyncSession) -> User:
-    """Create a test user."""
-    user = User(
-        username="testuser",
-        email="test@example.com",
-        hash_password="hashed_password",
-        role="USER",
-        confirmed=True,
-    )
-    session.add(user)
-    await session.commit()
-    await session.refresh(user)
-    return user
+@pytest.fixture(scope="module")
+def client():
+    # Dependency override
+
+    async def override_get_db():
+        async with TestingSessionLocal() as session:
+            try:
+                yield session
+            except Exception as err:
+                await session.rollback()
+                raise
+
+    app.dependency_overrides[get_db] = override_get_db
+
+    yield TestClient(app)
+
+
+@pytest_asyncio.fixture()
+async def get_token():
+    async with TestingSessionLocal() as session:
+        auth_service = AuthService(session)
+        token = auth_service.create_access_token(test_user["username"])
+    return token

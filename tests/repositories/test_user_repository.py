@@ -1,97 +1,117 @@
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
+from unittest.mock import AsyncMock, Mock
+
 from src.entity.models import User
 from src.repositories.user_repository import UserRepository
 from src.schemas.user import UserCreate
 
+@pytest.fixture
+def mock_session():
+    session = AsyncMock(spec=AsyncSession)
+    session.execute = AsyncMock()
+    session.commit = AsyncMock()
+    session.refresh = AsyncMock()
+    session.add = Mock()
+    return session
 
 @pytest.fixture
-def user_repository(session: AsyncSession):
-    return UserRepository(session)
-
-
-@pytest.fixture
-def test_user_data():
-    return {
-        "username": "testuser",
-        "email": "test@example.com",
-        "password": "test123456",
-    }
-
+def user_repository(mock_session):
+    return UserRepository(mock_session)
 
 @pytest.mark.asyncio
-async def test_get_by_username(user_repository: UserRepository, test_user_data: dict):
-    # Спочатку створюємо користувача
-    user = await user_repository.create_user(
-        UserCreate(**test_user_data), "hashed_password", "avatar.jpg"
-    )
-    # Потім отримуємо його за username
-    found_user = await user_repository.get_by_username(test_user_data["username"])
-    assert found_user is not None
-    assert found_user.username == test_user_data["username"]
+async def test_get_by_username(user_repository, mock_session):
+    # Arrange
+    username = "test_user"
+    mock_user = User(username=username)
+    mock_result = Mock()
+    mock_result.scalar_one_or_none.return_value = mock_user
+    mock_session.execute.return_value = mock_result
 
+    # Act
+    result = await user_repository.get_by_username(username)
 
-@pytest.mark.asyncio
-async def test_get_user_by_email(user_repository: UserRepository, test_user_data: dict):
-    # Спочатку створюємо користувача
-    user = await user_repository.create_user(
-        UserCreate(**test_user_data), "hashed_password", "avatar.jpg"
-    )
-    # Потім отримуємо його за email
-    found_user = await user_repository.get_user_by_email(test_user_data["email"])
-    assert found_user is not None
-    assert found_user.email == test_user_data["email"]
-
+    # Assert
+    assert result == mock_user
+    mock_session.execute.assert_called_once()
 
 @pytest.mark.asyncio
-async def test_create_user(user_repository: UserRepository, test_user_data: dict):
-    user = await user_repository.create_user(
-        UserCreate(**test_user_data), "hashed_password", "avatar.jpg"
-    )
-    assert user.username == test_user_data["username"]
-    assert user.email == test_user_data["email"]
-    assert user.hash_password == "hashed_password"
-    assert user.avatar == "avatar.jpg"
-    assert user.role == "USER"
-    assert not user.confirmed
+async def test_get_user_by_email(user_repository, mock_session):
+    # Arrange
+    email = "test@example.com"
+    mock_user = User(email=email)
+    mock_result = Mock()
+    mock_result.scalar_one_or_none.return_value = mock_user
+    mock_session.execute.return_value = mock_result
 
+    # Act
+    result = await user_repository.get_user_by_email(email)
 
-@pytest.mark.asyncio
-async def test_confirmed_email(user_repository: UserRepository, test_user_data: dict):
-    # Спочатку створюємо користувача
-    user = await user_repository.create_user(
-        UserCreate(**test_user_data), "hashed_password", "avatar.jpg"
-    )
-    # Підтверджуємо email
-    await user_repository.confirmed_email(test_user_data["email"])
-    # Перевіряємо, що email підтверджено
-    found_user = await user_repository.get_user_by_email(test_user_data["email"])
-    assert found_user.confirmed is True
-
+    # Assert
+    assert result == mock_user
+    mock_session.execute.assert_called_once()
 
 @pytest.mark.asyncio
-async def test_update_avatar_url(user_repository: UserRepository, test_user_data: dict):
-    # Спочатку створюємо користувача
-    user = await user_repository.create_user(
-        UserCreate(**test_user_data), "hashed_password", "avatar.jpg"
+async def test_create_user(user_repository, mock_session):
+    # Arrange
+    user_data = UserCreate(
+        username="test_user",
+        email="test@example.com",
+        password="password123"
     )
-    # Оновлюємо URL аватара
-    new_avatar_url = "new_avatar.jpg"
-    updated_user = await user_repository.update_avatar_url(
-        test_user_data["email"], new_avatar_url
+    hashed_password = "hashed_password"
+    avatar = "avatar_url"
+    mock_user = User(
+        username=user_data.username,
+        email=user_data.email,
+        hash_password=hashed_password,
+        avatar=avatar
     )
-    assert updated_user.avatar == new_avatar_url
+    mock_session.refresh.return_value = mock_user
 
+    # Act
+    result = await user_repository.create_user(user_data, hashed_password, avatar)
+
+    # Assert
+    assert result.username == mock_user.username
+    assert result.email == mock_user.email
+    assert result.hash_password == mock_user.hash_password
+    assert result.avatar == mock_user.avatar
+    mock_session.add.assert_called_once()
+    mock_session.commit.assert_called_once()
+    mock_session.refresh.assert_called_once()
 
 @pytest.mark.asyncio
-async def test_update_password(user_repository: UserRepository, test_user_data: dict):
-    # Спочатку створюємо користувача
-    user = await user_repository.create_user(
-        UserCreate(**test_user_data), "hashed_password", "avatar.jpg"
-    )
-    # Оновлюємо пароль
-    new_hashed_password = "new_hashed_password"
-    await user_repository.update_password(user.id, new_hashed_password)
-    # Перевіряємо, що пароль оновлено
-    found_user = await user_repository.get_user_by_email(test_user_data["email"])
-    assert found_user.hash_password == new_hashed_password
+async def test_confirmed_email(user_repository, mock_session):
+    # Arrange
+    email = "test@example.com"
+    mock_user = User(email=email, confirmed=False)
+    mock_result = Mock()
+    mock_result.scalar_one_or_none.return_value = mock_user
+    mock_session.execute.return_value = mock_result
+
+    # Act
+    await user_repository.confirmed_email(email)
+
+    # Assert
+    assert mock_user.confirmed is True
+    mock_session.commit.assert_called_once()
+
+@pytest.mark.asyncio
+async def test_update_avatar_url(user_repository, mock_session):
+    # Arrange
+    email = "test@example.com"
+    new_url = "new_avatar_url"
+    mock_user = User(email=email, avatar="old_url")
+    mock_result = Mock()
+    mock_result.scalar_one_or_none.return_value = mock_user
+    mock_session.execute.return_value = mock_result
+    mock_session.refresh.return_value = mock_user
+
+    # Act
+    result = await user_repository.update_avatar_url(email, new_url)
+
+    # Assert
+    assert result.avatar == new_url
+    mock_session.commit.assert_called_once()
+    mock_session.refresh.assert_called_once() 

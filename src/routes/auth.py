@@ -45,7 +45,7 @@ def get_password_reset_service(db: AsyncSession = Depends(get_db)):
     return PasswordResetService(db)
 
 
-@router.post("/register", response_model=UserResponse)
+@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def register(
     user_data: UserCreate,
     background_tasks: BackgroundTasks,

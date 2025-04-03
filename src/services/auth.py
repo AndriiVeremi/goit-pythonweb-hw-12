@@ -51,7 +51,7 @@ class AuthService:
         if not user.confirmed:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Email address not confirmed",
+                detail="Електронна адреса не підтверджена",
             )
 
         if not self._verify_password(password, user.hash_password):
@@ -78,23 +78,38 @@ class AuthService:
         except Exception as e:
             print(e)
         hashed_password = self._hash_password(user_data.password)
-        user = await self.user_repository.create_user(user_data, hashed_password, avatar)
+        user = await self.user_repository.create_user(
+            user_data, hashed_password, avatar
+        )
         return user
 
     def create_access_token(self, username: str) -> str:
         expires_delta = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60  # у секундах
-        return serializer.dumps({"sub": username, "exp": datetime.now(timezone.utc).timestamp() + expires_delta})
+        return serializer.dumps(
+            {
+                "sub": username,
+                "exp": datetime.now(timezone.utc).timestamp() + expires_delta,
+            }
+        )
 
-    async def create_refresh_token(self, user_id: int, ip_address: Optional[str], user_agent: Optional[str]) -> str:
+    async def create_refresh_token(
+        self, user_id: int, ip_address: Optional[str], user_agent: Optional[str]
+    ) -> str:
         token = secrets.token_urlsafe(32)
         token_hash = self._hash_token(token)
-        expired_at = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
-        await self.refresh_token_repository.save_token(user_id, token_hash, expired_at, ip_address, user_agent)
+        expired_at = datetime.now(timezone.utc) + timedelta(
+            days=settings.REFRESH_TOKEN_EXPIRE_DAYS
+        )
+        await self.refresh_token_repository.save_token(
+            user_id, token_hash, expired_at, ip_address, user_agent
+        )
         return token
 
     def decode_and_validate_access_token(self, token: str) -> dict:
         try:
-            payload = serializer.loads(token, max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60)
+            payload = serializer.loads(
+                token, max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+            )
             return payload
         except SignatureExpired:
             raise HTTPException(
@@ -129,7 +144,9 @@ class AuthService:
     async def validate_refresh_token(self, token: str) -> User:
         token_hash = self._hash_token(token)
         current_time = datetime.now(timezone.utc)
-        refresh_token = await self.refresh_token_repository.get_active_token(token_hash, current_time)
+        refresh_token = await self.refresh_token_repository.get_active_token(
+            token_hash, current_time
+        )
         if refresh_token is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token"
@@ -143,7 +160,9 @@ class AuthService:
 
     async def revoke_refresh_token(self, token: str) -> None:
         token_hash = self._hash_token(token)
-        refresh_token = await self.refresh_token_repository.get_by_token_hash(token_hash)
+        refresh_token = await self.refresh_token_repository.get_by_token_hash(
+            token_hash
+        )
         if refresh_token and not refresh_token.revoked_at:
             await self.refresh_token_repository.revoke_token(refresh_token)
 
@@ -151,4 +170,6 @@ class AuthService:
         payload = self.decode_and_validate_access_token(token)
         exp = payload.get("exp")
         if exp:
-            await redis_client.setex(f"bl:{token}", int(exp - datetime.now(timezone.utc).timestamp()), "1")
+            await redis_client.setex(
+                f"bl:{token}", int(exp - datetime.now(timezone.utc).timestamp()), "1"
+            )

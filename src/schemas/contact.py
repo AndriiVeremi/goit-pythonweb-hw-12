@@ -10,7 +10,7 @@ class ContactSchema(BaseModel):
     email: EmailStr
     phone: str = Field(min_length=5, max_length=50)
     birthday: date
-    extra_info: Optional[str] = Field(default=None, max_length=255)
+    extra_info: str = Field(max_length=255)
 
 
 class ContactUpdateSchema(BaseModel):
