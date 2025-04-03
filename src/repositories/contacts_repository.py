@@ -12,20 +12,70 @@ logger = logging.getLogger("uvicorn.error")
 
 
 class ContactRepository:
+    """
+    Репозиторій для роботи з контактами.
+
+    Надає методи для CRUD операцій з контактами, а також додаткові методи
+    для пошуку та фільтрації контактів.
+
+    Args:
+        session (AsyncSession): Асинхронна сесія для роботи з базою даних.
+    """
+
     def __init__(self, session: AsyncSession):
         self.db = session
 
-    async def get_contacts(self, limit: int, offset: int, user: User) -> Sequence[Contact]:
-        stmt = select(Contact).filter_by(user_id=user.id).offset(offset).limit(limit).offset(offset).limit(limit)
+    async def get_contacts(
+        self, limit: int, offset: int, user: User
+    ) -> Sequence[Contact]:
+        """
+        Отримує список контактів користувача з пагінацією.
+
+        Args:
+            limit (int): Максимальна кількість контактів для отримання.
+            offset (int): Зміщення для пагінації.
+            user (User): Користувач, чиї контакти потрібно отримати.
+
+        Returns:
+            Sequence[Contact]: Послідовність контактів користувача.
+        """
+        stmt = (
+            select(Contact)
+            .filter_by(user_id=user.id)
+            .offset(offset)
+            .limit(limit)
+            .offset(offset)
+            .limit(limit)
+        )
         contacts = await self.db.execute(stmt)
         return contacts.scalars().all()
 
     async def get_contact_by_id(self, contact_id: int, user: User) -> Contact | None:
+        """
+        Отримує контакт за ID та користувачем.
+
+        Args:
+            contact_id (int): ID контакту.
+            user (User): Користувач, якому належить контакт.
+
+        Returns:
+            Contact | None: Знайдений контакт або None, якщо контакт не знайдено.
+        """
         stmt = select(Contact).filter_by(id=contact_id, user_id=user.id)
         contact = await self.db.execute(stmt)
         return contact.scalar_one_or_none()
 
     async def create_contact(self, body: ContactSchema, user: User) -> Contact:
+        """
+        Створює новий контакт.
+
+        Args:
+            body (ContactSchema): Дані для створення контакту.
+            user (User): Користувач, який створює контакт.
+
+        Returns:
+            Contact: Створений контакт.
+        """
         contact = Contact(**body.model_dump(), user_id=user.id)
         self.db.add(contact)
         await self.db.commit()
@@ -35,6 +85,17 @@ class ContactRepository:
     async def update_contact(
         self, contact_id: int, body: ContactUpdateSchema, user: User
     ) -> Contact | None:
+        """
+        Оновлює існуючий контакт.
+
+        Args:
+            contact_id (int): ID контакту для оновлення.
+            body (ContactUpdateSchema): Дані для оновлення контакту.
+            user (User): Користувач, якому належить контакт.
+
+        Returns:
+            Contact | None: Оновлений контакт або None, якщо контакт не знайдено.
+        """
         contact = await self.get_contact_by_id(contact_id, user)
         if contact:
             update_data = body.model_dump(exclude_unset=True)
@@ -48,6 +109,16 @@ class ContactRepository:
         return contact
 
     async def remove_contact(self, contact_id: int, user: User) -> Contact | None:
+        """
+        Видаляє контакт.
+
+        Args:
+            contact_id (int): ID контакту для видалення.
+            user (User): Користувач, якому належить контакт.
+
+        Returns:
+            Contact | None: Видалений контакт або None, якщо контакт не знайдено.
+        """
         contact = await self.get_contact_by_id(contact_id, user)
         if contact:
             await self.db.delete(contact)
@@ -60,6 +131,17 @@ class ContactRepository:
         last_name: Optional[str] = None,
         email: Optional[str] = None,
     ) -> Sequence[Contact]:
+        """
+        Пошук контактів за різними параметрами.
+
+        Args:
+            first_name (Optional[str]): Ім'я для пошуку.
+            last_name (Optional[str]): Прізвище для пошуку.
+            email (Optional[str]): Email для пошуку.
+
+        Returns:
+            Sequence[Contact]: Послідовність знайдених контактів.
+        """
         stmt = select(Contact)
 
         if first_name:
@@ -73,6 +155,15 @@ class ContactRepository:
         return contacts.scalars().all()
 
     async def get_upcoming_birthdays(self, days: int) -> list[Contact]:
+        """
+        Отримує список контактів, у яких день народження настане протягом вказаної кількості днів.
+
+        Args:
+            days (int): Кількість днів для перевірки майбутніх днів народження.
+
+        Returns:
+            list[Contact]: Список контактів з майбутніми днями народження.
+        """
         today = date.today()
         end_date = today + timedelta(days=days)
 

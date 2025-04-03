@@ -1,3 +1,10 @@
+"""
+Модуль, що містить моделі бази даних для додатку контактів.
+
+Цей модуль визначає всі моделі SQLAlchemy, які використовуються в додатку,
+включаючи користувачів, контакти, токени оновлення та токени скидання паролю.
+"""
+
 from datetime import datetime, date
 from enum import Enum
 from typing import Any
@@ -17,10 +24,39 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 
 class Base(DeclarativeBase):
+    """
+    Базовий клас для всіх моделей SQLAlchemy.
+    
+    Цей клас використовується як базовий для всіх моделей в додатку.
+    Він наслідується від DeclarativeBase SQLAlchemy і надає базову
+    функціональність для ORM.
+
+    Attributes:
+        metadata: Об'єкт метаданих SQLAlchemy для керування схемою бази даних
+        registry: Реєстр класів моделей
+        
+    Note:
+        Всі моделі в додатку повинні наслідуватися від цього класу для
+        забезпечення правильної роботи з базою даних.
+    """
     pass
 
 
 class Contact(Base):
+    """
+    Модель для зберігання контактів користувачів.
+
+    Attributes:
+        id (int): Унікальний ідентифікатор контакту
+        first_name (str): Ім'я контакту
+        last_name (str): Прізвище контакту
+        email (str): Email адреса контакту
+        phone (str): Номер телефону контакту
+        birthday (date): Дата народження контакту
+        extra_info (str): Додаткова інформація про контакт
+        user_id (int): Ідентифікатор користувача, якому належить контакт
+        user (User): Зв'язок з моделлю користувача
+    """
     __tablename__ = "contacts"
     id: Mapped[int] = mapped_column(primary_key=True)
     first_name: Mapped[str] = mapped_column(String(100), nullable=False)
@@ -35,12 +71,34 @@ class Contact(Base):
 
 
 class UserRole(str, Enum):
+    """
+    Перелік можливих ролей користувача.
+
+    Attributes:
+        USER: Звичайний користувач
+        MODERATOR: Модератор з розширеними правами
+        ADMIN: Адміністратор з повними правами
+    """
     USER = "USER"
     MODERATOR = "MODERATOR"
     ADMIN = "ADMIN"
 
 
 class User(Base):
+    """
+    Модель користувача системи.
+
+    Attributes:
+        id (int): Унікальний ідентифікатор користувача
+        username (str): Унікальне ім'я користувача
+        email (str): Унікальна email адреса користувача
+        hash_password (str): Хешований пароль користувача
+        role (UserRole): Роль користувача в системі
+        avatar (str): URL аватара користувача
+        confirmed (bool): Статус підтвердження email
+        refresh_tokens (list[RefreshToken]): Список токенів оновлення
+        password_reset_tokens (list[PasswordResetToken]): Список токенів скидання паролю
+    """
     __tablename__ = "users"
     id: Mapped[int] = mapped_column(primary_key=True)
     username: Mapped[str] = mapped_column(nullable=False, unique=True)
@@ -60,6 +118,20 @@ class User(Base):
 
 
 class RefreshToken(Base):
+    """
+    Модель для зберігання токенів оновлення.
+
+    Attributes:
+        id (int): Унікальний ідентифікатор токену
+        user_id (int): Ідентифікатор користувача
+        token_hash (str): Хеш токену оновлення
+        created_at (datetime): Час створення токену
+        expired_at (datetime): Час закінчення дії токену
+        revoked_at (datetime): Час відкликання токену
+        ip_address (str): IP адреса, з якої було створено токен
+        user_agent (str): User-Agent браузера
+        user (User): Зв'язок з моделлю користувача
+    """
     __tablename__ = "refresh_tokens"
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
@@ -78,6 +150,18 @@ class RefreshToken(Base):
 
 
 class PasswordResetToken(Base):
+    """
+    Модель для зберігання токенів скидання паролю.
+
+    Attributes:
+        id (int): Унікальний ідентифікатор токену
+        user_id (int): Ідентифікатор користувача
+        token (str): Унікальний токен для скидання паролю
+        expires_at (datetime): Час закінчення дії токену
+        used (bool): Прапорець використання токену
+        created_at (datetime): Час створення токену
+        user (User): Зв'язок з моделлю користувача
+    """
     __tablename__ = "password_reset_tokens"
 
     id: Mapped[int] = mapped_column(primary_key=True)
