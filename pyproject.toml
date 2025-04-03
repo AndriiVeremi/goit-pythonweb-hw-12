@@ -30,7 +30,8 @@ dependencies = [
     "aiosqlite (>=0.21.0,<0.22.0)",
     "httpx (>=0.28.1,<0.29.0)",
     "pytest-cov (>=6.1.0,<7.0.0)",
-    "python-jose[cryptography] (>=3.4.0,<4.0.0)"
+    "python-jose[cryptography] (>=3.4.0,<4.0.0)",
+    "coverage (>=7.8.0,<8.0.0)"
 ]
 
 [tool.poetry]
@@ -45,13 +46,9 @@ packages = [{include = "src"}]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
 
-[tool.pytest.ini_options]
-pythonpath = "."
-asyncio_mode = "strict"
-testpaths = ["tests"]
-
 [tool.poetry.group.dev.dependencies]
 pytest-cov = "^6.1.0"
+sphinx = "^8.2.3"
 
 [tool.poetry.scripts]
 test = "pytest:main"
@@ -59,3 +56,12 @@ test-cov = "pytest:main --cov=src"
 test-v = "pytest:main -v"
 test-cov-v = "pytest:main --cov=src -v"
 
+[tool.pytest.ini_options]
+addopts = "--doctest-modules -W ignore::DeprecationWarning -W ignore::UserWarning"
+testpaths = ["tests"]
+pythonpath = "."
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::UserWarning"
+]
+asyncio_default_fixture_loop_scope = "function"
