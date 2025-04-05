@@ -11,10 +11,54 @@ Add your content using ``reStructuredText`` syntax. See the
 `reStructuredText <https://www.sphinx-doc.org/en/master/usage/restructuredtext/index.html>`_
 documentation for details.
 
+Документація API Контактів
+============================
+
+Ласкаво просимо до документації API Контактів! Цей проект представляє собою REST API для управління контактами з аутентифікацією та авторизацією користувачів.
+
+Технології
+----------
+
+- Python
+- FastAPI
+- SQLAlchemy
+- PostgreSQL
+- JWT для аутентифікації
+- Pydantic для валідації даних
+
+Зміст
+-----
+
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
+   :caption: Компоненти:
 
+   src/conf/config
+   src/database/db
+   src/entity/models
+   
+.. toctree::
+   :maxdepth: 2
+   :caption: API Маршрути:
+
+   src/routes/contacts
+   src/routes/auth
+   src/routes/users
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Сервіси:
+
+   src/services/contacts
+   src/services/auth
+   src/services/user
+
+Індекси та таблиці
+==================
+
+* :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`
 
 REST API main
 ===================
