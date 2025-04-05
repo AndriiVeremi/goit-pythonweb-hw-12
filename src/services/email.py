@@ -23,6 +23,17 @@ conf = ConnectionConfig(
 
 
 async def send_email(email: EmailStr, username: str, host: str):
+    """
+    Відправка email для підтвердження електронної адреси.
+
+    Args:
+        email (EmailStr): Email-адреса отримувача
+        username (str): Ім'я користувача
+        host (str): Хост додатку для формування посилання підтвердження
+
+    Note:
+        У випадку помилки з'єднання, помилка буде виведена в консоль
+    """
     try:
         token_verification = create_email_token({"sub": email})
         message = MessageSchema(
@@ -43,6 +54,16 @@ async def send_email(email: EmailStr, username: str, host: str):
 
 
 async def send_password_reset_email(email: EmailStr, token: str):
+    """
+    Відправка email для скидання пароля.
+
+    Args:
+        email (EmailStr): Email-адреса отримувача
+        token (str): Токен для скидання пароля
+
+    Note:
+        У випадку помилки з'єднання, помилка буде виведена в консоль
+    """
     try:
         message = MessageSchema(
             subject="Скидання пароля",

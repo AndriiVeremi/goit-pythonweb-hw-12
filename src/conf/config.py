@@ -12,9 +12,7 @@ class Settings(BaseSettings):
     POSTGRES_HOST: str = "localhost"
     POSTGRES_PORT: str = "5432"
     DB_URL: str = "postgresql+asyncpg://postgres:123456@localhost:5432/hw7_db"
-    test_database_url: str = (
-        "postgresql+asyncpg://postgres:123456@localhost:5432/hw7_test_db"
-    )
+
 
     # Redis settings
     REDIS_URL: str = "redis://localhost"
