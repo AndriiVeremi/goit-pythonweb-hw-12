@@ -45,3 +45,42 @@ class RedisService:
         """
         key = f"user:{user_id}"
         await redis_client.delete(key)
+
+    @staticmethod
+    async def set_user_id_by_username(username: str, user_id: int, expire_time: int = 3600) -> None:
+        """
+        Зберігає відповідність username до user_id в Redis
+
+        Args:
+            username: Ім'я користувача
+            user_id: ID користувача
+            expire_time: Час життя кешу в секундах (за замовчуванням 1 година)
+        """
+        key = f"username:{username}"
+        await redis_client.setex(key, expire_time, str(user_id))
+
+    @staticmethod
+    async def get_user_id_by_username(username: str) -> Optional[int]:
+        """
+        Отримує ID користувача за його username з Redis
+
+        Args:
+            username: Ім'я користувача
+
+        Returns:
+            int: ID користувача або None, якщо не знайдено
+        """
+        key = f"username:{username}"
+        user_id = await redis_client.get(key)
+        return int(user_id) if user_id else None
+
+    @staticmethod
+    async def delete_user_id_by_username(username: str) -> None:
+        """
+        Видаляє відповідність username до user_id з Redis
+
+        Args:
+            username: Ім'я користувача
+        """
+        key = f"username:{username}"
+        await redis_client.delete(key)

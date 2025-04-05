@@ -34,14 +34,41 @@ logger = logging.getLogger("uvicorn.error")
 
 
 def get_auth_service(db: AsyncSession = Depends(get_db)):
+    """
+    Отримання сервісу аутентифікації.
+
+    Args:
+        db (AsyncSession): Сесія бази даних
+
+    Returns:
+        AuthService: Екземпляр сервісу аутентифікації
+    """
     return AuthService(db)
 
 
 def get_user_service(db: AsyncSession = Depends(get_db)):
+    """
+    Отримання сервісу користувача.
+
+    Args:
+        db (AsyncSession): Сесія бази даних
+
+    Returns:
+        UserService: Екземпляр сервісу користувача
+    """
     return UserService(db)
 
 
 def get_password_reset_service(db: AsyncSession = Depends(get_db)):
+    """
+    Отримання сервісу скидання пароля.
+
+    Args:
+        db (AsyncSession): Сесія бази даних
+
+    Returns:
+        PasswordResetService: Екземпляр сервісу скидання пароля
+    """
     return PasswordResetService(db)
 
 
@@ -52,6 +79,18 @@ async def register(
     request: Request,
     auth_service: AuthService = Depends(get_auth_service),
 ):
+    """
+    Реєстрація нового користувача.
+
+    Args:
+        user_data (UserCreate): Дані нового користувача
+        background_tasks (BackgroundTasks): Фонові завдання FastAPI
+        request (Request): Об'єкт запиту
+        auth_service (AuthService): Сервіс аутентифікації
+
+    Returns:
+        UserResponse: Дані створеного користувача
+    """
     user = await auth_service.register_user(user_data)
     background_tasks.add_task(
         send_email, user_data.email, user_data.username, str(request.base_url)
@@ -65,6 +104,20 @@ async def login(
     request: Request = None,
     auth_service: AuthService = Depends(get_auth_service),
 ):
+    """
+    Аутентифікація користувача.
+
+    Args:
+        form_data (OAuth2PasswordRequestForm): Дані форми входу
+        request (Request): Об'єкт запиту
+        auth_service (AuthService): Сервіс аутентифікації
+
+    Returns:
+        TokenResponse: Токени доступу та оновлення
+
+    Raises:
+        HTTPException: При невірних облікових даних
+    """
     user = await auth_service.authenticate(form_data.username, form_data.password)
     access_token = auth_service.create_access_token(user.username)
     refresh_token = await auth_service.create_refresh_token(
@@ -83,6 +136,20 @@ async def refresh(
     request: Request = None,
     auth_service: AuthService = Depends(get_auth_service),
 ):
+    """
+    Оновлення токену доступу.
+
+    Args:
+        refresh_token (RefreshTokenRequest): Токен оновлення
+        request (Request): Об'єкт запиту
+        auth_service (AuthService): Сервіс аутентифікації
+
+    Returns:
+        TokenResponse: Нові токени доступу та оновлення
+
+    Raises:
+        HTTPException: При невалідному токені оновлення
+    """
     user = await auth_service.validate_refresh_token(refresh_token.refresh_token)
 
     new_access_token = auth_service.create_access_token(user.username)
@@ -107,6 +174,17 @@ async def logout(
     token: str = Depends(oauth2_scheme),
     auth_service: AuthService = Depends(get_auth_service),
 ):
+    """
+    Вихід користувача з системи.
+
+    Args:
+        refresh_token (RefreshTokenRequest): Токен оновлення для відкликання
+        token (str): Токен доступу для відкликання
+        auth_service (AuthService): Сервіс аутентифікації
+
+    Returns:
+        None: Успішний вихід
+    """
     await auth_service.revoke_access_token(token)
     await auth_service.revoke_refresh_token(refresh_token.refresh_token)
     return None
@@ -117,6 +195,16 @@ async def request_password_reset(
     request: PasswordResetRequest,
     password_reset_service: PasswordResetService = Depends(get_password_reset_service),
 ):
+    """
+    Запит на скидання пароля.
+
+    Args:
+        request (PasswordResetRequest): Запит з email користувача
+        password_reset_service (PasswordResetService): Сервіс скидання пароля
+
+    Returns:
+        PasswordResetResponse: Повідомлення про відправку інструкцій
+    """
     await password_reset_service.request_password_reset(request.email)
     return PasswordResetResponse(
         message="Якщо користувач з такою електронною поштою існує, інструкції щодо скидання пароля будуть відправлені"
@@ -128,7 +216,18 @@ async def confirm_password_reset(
     request: PasswordResetConfirm,
     password_reset_service: PasswordResetService = Depends(get_password_reset_service),
 ):
-    await password_reset_service.confirm_password_reset(
-        request.token, request.new_password
-    )
+    """
+    Підтвердження скидання пароля.
+
+    Args:
+        request (PasswordResetConfirm): Дані для скидання пароля
+        password_reset_service (PasswordResetService): Сервіс скидання пароля
+
+    Returns:
+        PasswordResetResponse: Повідомлення про успішну зміну пароля
+
+    Raises:
+        HTTPException: При невалідному токені або помилці зміни пароля
+    """
+    await password_reset_service.confirm_password_reset(request.token, request.new_password)
     return PasswordResetResponse(message="Пароль успішно змінено")
