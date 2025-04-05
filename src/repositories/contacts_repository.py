@@ -25,9 +25,7 @@ class ContactRepository:
     def __init__(self, session: AsyncSession):
         self.db = session
 
-    async def get_contacts(
-        self, limit: int, offset: int, user: User
-    ) -> Sequence[Contact]:
+    async def get_contacts(self, limit: int, offset: int, user: User) -> Sequence[Contact]:
         """
         Отримує список контактів користувача з пагінацією.
 
@@ -130,6 +128,7 @@ class ContactRepository:
         first_name: Optional[str] = None,
         last_name: Optional[str] = None,
         email: Optional[str] = None,
+        user: User = None,
     ) -> Sequence[Contact]:
         """
         Пошук контактів за різними параметрами.
@@ -138,12 +137,15 @@ class ContactRepository:
             first_name (Optional[str]): Ім'я для пошуку.
             last_name (Optional[str]): Прізвище для пошуку.
             email (Optional[str]): Email для пошуку.
+            user (User): Користувач, чиї контакти потрібно знайти.
 
         Returns:
             Sequence[Contact]: Послідовність знайдених контактів.
         """
         stmt = select(Contact)
 
+        if user:
+            stmt = stmt.filter(Contact.user_id == user.id)
         if first_name:
             stmt = stmt.filter(Contact.first_name.ilike(f"%{first_name}%"))
         if last_name:
@@ -154,12 +156,13 @@ class ContactRepository:
         contacts = await self.db.execute(stmt)
         return contacts.scalars().all()
 
-    async def get_upcoming_birthdays(self, days: int) -> list[Contact]:
+    async def get_upcoming_birthdays(self, days: int, user: User) -> list[Contact]:
         """
         Отримує список контактів, у яких день народження настане протягом вказаної кількості днів.
 
         Args:
             days (int): Кількість днів для перевірки майбутніх днів народження.
+            user (User): Користувач, чиї контакти потрібно перевірити.
 
         Returns:
             list[Contact]: Список контактів з майбутніми днями народження.
@@ -170,17 +173,20 @@ class ContactRepository:
         query = (
             select(Contact)
             .where(
-                or_(
-                    func.date_part("day", Contact.birthday).between(
-                        func.date_part("day", today), func.date_part("day", end_date)
-                    ),
-                    and_(
-                        func.date_part("day", end_date) < func.date_part("day", today),
-                        or_(
-                            func.date_part("day", Contact.birthday)
-                            >= func.date_part("day", today),
-                            func.date_part("day", Contact.birthday)
-                            <= func.date_part("day", end_date),
+                and_(
+                    Contact.user_id == user.id,
+                    or_(
+                        func.date_part("day", Contact.birthday).between(
+                            func.date_part("day", today), func.date_part("day", end_date)
+                        ),
+                        and_(
+                            func.date_part("day", end_date) < func.date_part("day", today),
+                            or_(
+                                func.date_part("day", Contact.birthday)
+                                >= func.date_part("day", today),
+                                func.date_part("day", Contact.birthday)
+                                <= func.date_part("day", end_date),
+                            ),
                         ),
                     ),
                 )

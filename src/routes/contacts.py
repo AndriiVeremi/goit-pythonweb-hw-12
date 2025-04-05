@@ -22,8 +22,8 @@ logger = logging.getLogger("uvicorn.error")
 async def get_contacts(
     limit: int = Query(10, ge=10, le=100),
     offset: int = Query(0, ge=0),
-    db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Отримання списку контактів з пагінацією.
@@ -31,8 +31,8 @@ async def get_contacts(
     Args:
         limit (int): Кількість контактів на сторінку (від 10 до 100)
         offset (int): Зміщення від початку списку
-        db (AsyncSession): Сесія бази даних
         user (User): Поточний аутентифікований користувач
+        db (AsyncSession): Сесія бази даних
 
     Returns:
         list[ContactResponse]: Список контактів
@@ -46,16 +46,16 @@ async def get_contacts(
 @router.get("/{contact_id}", response_model=ContactResponse)
 async def get_contact(
     contact_id: int,
-    db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Отримання контакту за його ідентифікатором.
 
     Args:
         contact_id (int): Ідентифікатор контакту
-        db (AsyncSession): Сесія бази даних
         user (User): Поточний аутентифікований користувач
+        db (AsyncSession): Сесія бази даних
 
     Returns:
         ContactResponse: Дані контакту
@@ -66,9 +66,7 @@ async def get_contact(
     cont_service = ContactService(db)
     contact = await cont_service.get_contact(contact_id, user)
     if contact is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Контакт не знайдено"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Контакт не знайдено")
     return contact
 
 
@@ -79,16 +77,16 @@ async def get_contact(
 )
 async def create_contact(
     body: ContactSchema,
-    db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Створення нового контакту.
 
     Args:
         body (ContactSchema): Дані нового контакту
-        db (AsyncSession): Сесія бази даних
         user (User): Поточний аутентифікований користувач
+        db (AsyncSession): Сесія бази даних
 
     Returns:
         ContactResponse: Створений контакт
@@ -109,8 +107,8 @@ async def create_contact(
 async def update_contact(
     contact_id: int,
     body: ContactUpdateSchema,
-    db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Оновлення існуючого контакту.
@@ -118,8 +116,8 @@ async def update_contact(
     Args:
         contact_id (int): Ідентифікатор контакту
         body (ContactUpdateSchema): Дані для оновлення
-        db (AsyncSession): Сесія бази даних
         user (User): Поточний аутентифікований користувач
+        db (AsyncSession): Сесія бази даних
 
     Returns:
         ContactResponse: Оновлений контакт
@@ -131,9 +129,7 @@ async def update_contact(
     contact = await cont_service.update_contact(contact_id, body, user)
     if contact is None:
         logger.warning(f"Контакт з ID {contact_id} не знайдено для оновлення")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Контакт не знайдено"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Контакт не знайдено")
     logger.info(f"Контакт з ID {contact_id} успішно оновлено")
     return contact
 
@@ -141,16 +137,16 @@ async def update_contact(
 @router.delete("/{contact_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_contact(
     contact_id: int,
-    db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Видалення контакту.
 
     Args:
         contact_id (int): Ідентифікатор контакту для видалення
-        db (AsyncSession): Сесія бази даних
         user (User): Поточний аутентифікований користувач
+        db (AsyncSession): Сесія бази даних
 
     Returns:
         None: Контакт успішно видалено
@@ -166,6 +162,7 @@ async def search_contacts(
     first_name: Optional[str] = Query(None),
     last_name: Optional[str] = Query(None),
     email: Optional[str] = Query(None),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -175,6 +172,7 @@ async def search_contacts(
         first_name (Optional[str]): Ім'я для пошуку
         last_name (Optional[str]): Прізвище для пошуку
         email (Optional[str]): Email для пошуку
+        user (User): Поточний аутентифікований користувач
         db (AsyncSession): Сесія бази даних
 
     Returns:
@@ -184,30 +182,35 @@ async def search_contacts(
         HTTPException: Якщо контакти не знайдено
     """
     cont_service = ContactService(db)
-    contacts = await cont_service.search_contacts(first_name, last_name, email)
+    contacts = await cont_service.search_contacts(first_name, last_name, email, user)
     if not contacts:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Контакти не знайдено"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Контакти не знайдено")
     logger.info(f"Знайдено {len(contacts)} контактів")
     return contacts
 
 
 @router.get("/birthdays/", response_model=list[ContactResponse])
 async def get_upcoming_birthdays(
-    days: int = Query(default=7, ge=1), db: AsyncSession = Depends(get_db)
+    days: int = Query(default=7, ge=1),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Отримання списку контактів з найближчими днями народження.
 
     Args:
         days (int): Кількість днів для перевірки (за замовчуванням 7)
+        user (User): Поточний аутентифікований користувач
         db (AsyncSession): Сесія бази даних
 
     Returns:
         list[ContactResponse]: Список контактів з найближчими днями народження
     """
-    contact_service = ContactService(db)
-    birthdays = await contact_service.get_upcoming_birthdays(days)
-    logger.info(f"Знайдено {len(birthdays)} контактів з найближчими днями народження")
-    return birthdays
+    cont_service = ContactService(db)
+    contacts = await cont_service.get_upcoming_birthdays(days, user)
+    if not contacts:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Контакти з найближчими днями народження не знайдено",
+        )
+    return contacts

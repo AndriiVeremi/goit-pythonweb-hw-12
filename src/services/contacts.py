@@ -66,9 +66,7 @@ class ContactService:
         """
         return await self.contact_repository.get_contact_by_id(contact_id, user)
 
-    async def update_contact(
-        self, contact_id: int, body: ContactUpdateSchema, user: User
-    ):
+    async def update_contact(self, contact_id: int, body: ContactUpdateSchema, user: User):
         """
         Оновлення існуючого контакту.
 
@@ -100,6 +98,7 @@ class ContactService:
         first_name: Optional[str] = None,
         last_name: Optional[str] = None,
         email: Optional[str] = None,
+        user: User = None,
     ):
         """
         Пошук контактів за різними критеріями.
@@ -108,22 +107,22 @@ class ContactService:
             first_name (Optional[str]): Ім'я для пошуку
             last_name (Optional[str]): Прізвище для пошуку
             email (Optional[str]): Email для пошуку
+            user (User): Користувач, чиї контакти потрібно знайти
 
         Returns:
             list[Contact]: Список знайдених контактів
         """
-        return await self.contact_repository.search_contacts(
-            first_name, last_name, email
-        )
+        return await self.contact_repository.search_contacts(first_name, last_name, email, user)
 
-    async def get_upcoming_birthdays(self, days: int):
+    async def get_upcoming_birthdays(self, days: int, user: User):
         """
         Отримання списку контактів з найближчими днями народження.
 
         Args:
             days (int): Кількість днів для перевірки
+            user (User): Користувач, чиї контакти потрібно перевірити
 
         Returns:
             list[Contact]: Список контактів з найближчими днями народження
         """
-        return await self.contact_repository.get_upcoming_birthdays(days)
+        return await self.contact_repository.get_upcoming_birthdays(days, user)

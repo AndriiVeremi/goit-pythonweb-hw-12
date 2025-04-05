@@ -9,13 +9,39 @@ from src.repositories.user_repository import UserRepository
 from src.services.auth import AuthService
 
 class PasswordResetService:
+    """
+    Сервіс для управління процесом скидання пароля користувача.
+
+    Attributes:
+        db (AsyncSession): Асинхронна сесія бази даних
+        password_reset_repository (PasswordResetRepository): Репозиторій для роботи з токенами скидання пароля
+        user_repository (UserRepository): Репозиторій для роботи з користувачами
+        auth_service (AuthService): Сервіс аутентифікації
+    """
+
     def __init__(self, db: AsyncSession):
+        """
+        Ініціалізація сервісу скидання пароля.
+
+        Args:
+            db (AsyncSession): Асинхронна сесія бази даних
+        """
         self.db = db
         self.password_reset_repository = PasswordResetRepository(db)
         self.user_repository = UserRepository(db)
         self.auth_service = AuthService(db)
 
     async def request_password_reset(self, email: str) -> None:
+        """
+        Запит на скидання пароля.
+
+        Args:
+            email (str): Email користувача
+
+        Note:
+            Якщо користувач з вказаним email існує, йому буде відправлено
+            лист з токеном для скидання пароля.
+        """
         user = await self.user_repository.get_user_by_email(email)
         if not user:
             return
@@ -32,6 +58,16 @@ class PasswordResetService:
         await send_password_reset_email(user_email, reset_token)
 
     async def confirm_password_reset(self, token: str, new_password: str) -> None:
+        """
+        Підтвердження скидання пароля та встановлення нового.
+
+        Args:
+            token (str): Токен скидання пароля
+            new_password (str): Новий пароль
+
+        Raises:
+            HTTPException: При невалідному, простроченому або вже використаному токені
+        """
         reset_token = await self.password_reset_repository.get_token(token)
         if not reset_token:
             raise HTTPException(
