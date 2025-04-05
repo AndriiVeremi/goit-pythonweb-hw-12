@@ -16,6 +16,15 @@ scheduler = AsyncIOScheduler()
 
 
 async def cleanup_expired_tokens():
+    """
+    Асинхронна функція для очищення застарілих токенів з бази даних.
+
+    Видаляє:
+    - Токени, термін дії яких закінчився
+    - Відкликані токени, які старші 7 днів
+
+    Функція запускається періодично через планувальник завдань.
+    """
     async with sessionmanager.session() as db:
         now = datetime.now(timezone.utc)
         cutoff = now - timedelta(days=7)
@@ -29,6 +38,17 @@ async def cleanup_expired_tokens():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """
+    Менеджер контексту життєвого циклу FastAPI додатку.
+
+    Args:
+        app (FastAPI): Екземпляр FastAPI додатку
+
+    Виконує:
+    - Запуск планувальника завдань при старті додатку
+    - Налаштування періодичного очищення токенів
+    - Коректне завершення роботи планувальника при зупинці додатку
+    """
     scheduler.add_job(cleanup_expired_tokens, "interval", hours=1)
     scheduler.start()
     yield
@@ -45,10 +65,21 @@ app = FastAPI(
 
 @app.exception_handler(RateLimitExceeded)
 async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
+    """
+    Обробник помилок для випадків перевищення ліміту запитів.
+
+    Args:
+        request (Request): Об'єкт запиту
+        exc (RateLimitExceeded): Об'єкт виключення
+
+    Returns:
+        JSONResponse: Відповідь з повідомленням про перевищення ліміту
+    """
     return JSONResponse(
         status_code=status.HTTP_429_TOO_MANY_REQUESTS,
         content={"error": "Перевищено ліміт запитів. Спробуйте пізніше."},
     )
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -61,13 +92,36 @@ app.add_middleware(
 app.include_router(contacts.router, prefix="/api")
 app.include_router(auth.router, prefix="/api")
 app.include_router(users.router, prefix="/api")
+
+
 @app.get("/")
 def read_root(request: Request):
+    """
+    Головний ендпоінт додатку.
+
+    Args:
+        request (Request): Об'єкт запиту
+
+    Returns:
+        dict: Базова інформація про додаток
+    """
     return {"message": "Contacts App v.1.0"}
 
 
 @app.get("/api/healthchecker")
 async def healthchecker(db: AsyncSession = Depends(get_db)):
+    """
+    Ендпоінт для перевірки стану з'єднання з базою даних.
+
+    Args:
+        db (AsyncSession): Асинхронна сесія бази даних
+
+    Returns:
+        dict: Повідомлення про успішне підключення
+
+    Raises:
+        HTTPException: Якщо виникла помилка підключення до бази даних
+    """
     try:
         result = await db.execute(text("SELECT 1"))
         result = result.fetchone()
